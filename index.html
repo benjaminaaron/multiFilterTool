@@ -1,0 +1,320 @@
+<html>
+	<head>
+		<title>jobfilter standalone dev</title>
+
+<style>
+/*
+#scopePanel {
+	text-align : center;
+	height : 350px;
+	width : 250px;
+	background-color : #FFFFCC;
+	border: 2px solid;
+	border-color: #FFFF66;
+}
+
+#loadScopeBtn {
+	position: relative;
+	top:50%;
+} */
+</style>
+
+<!-- <link href="css/jquery-ui-1.10.4.custom.css" rel="stylesheet" type="text/css"/>
+<link href="css/jquery-ui-timepicker-addon.css" rel="stylesheet" type="text/css"/> -->
+<script type="text/javascript" src="js/jquery-2.1.0.js"></script>
+<!-- <script type="text/javascript" src="js/jquery-ui-1.10.4.custom.js"></script>
+<script type="text/javascript" src="js/jquery-ui-timepicker-addon.js"></script> -->
+
+<script type="text/javascript" src="config.js"></script>
+
+
+<script>
+
+	$(function() {		
+		jobfilterVar.setup();
+	});
+
+	var jobfilterVar = {};
+	jobfilterVar.filterCols = new Array();
+
+
+	jobfilterVar.setup = function(){
+		//FILTERFLOW GRID
+		var grid = $('<table/>').attr({
+			'id' : 'filterflowGrid',
+			'width' : 'auto',
+			'border': '1'
+		}).appendTo($('#mainContainer'));
+
+		var row1_grid = $('<tr/>').attr({
+			'id' : 'row1_grid'
+		}).appendTo(grid);
+
+		var scopeCell_grid = $('<td/>').attr({
+			'id' : 'scopeCell_grid',
+			'valign' : 'top'
+		}).appendTo(row1_grid);
+
+/*		this.scopePanel = $('<div/>').attr({
+			'id' : 'scopePanel'
+		}).appendTo(this.scopeCell_grid); */
+
+		var loadScopeBtn = $('<input/>').attr({
+			'type' : 'button',
+			'id' : 'loadScopeBtn',
+			'value' : 'load scope'
+		}).appendTo(scopeCell_grid);
+
+/*		var row2_grid = $('<tr/>').attr({
+			'id' : 'row2_grid'
+		}).appendTo(grid); */
+
+		var self = this;
+		$(loadScopeBtn).click(function() {
+    		self.loadInitialScope();
+		});
+	}
+
+	jobfilterVar.loadInitialScope = function(){		
+		$('#loadScopeBtn').hide();//.fadeOut();
+		var scopeView1 = buildScopeView(-1, 1, true, false);
+		$('#scopeCell_grid').append(scopeView1.table);
+		$('#row1_grid').append(new buildTwoButtonCol('load all jobs', 'add filter'));
+	};
+
+	jobfilterVar.loadJobs = function(){
+		alert('loading ' + (jobfilterVar.filterCols.length == 0 ? 'all jobs in your scope' : 'jobs in your scope filtered by ' + jobfilterVar.filterCols.length + ' filters'));
+	};
+
+	jobfilterVar.addFilterCol = function(){
+		console.log('adding filter col');
+		$('#twoButtonCol').remove();
+		var filterCol = new buildFilterCol(jobfilterVar.filterCols.length);
+		jobfilterVar.filterCols.push(filterCol);
+		$('#row1_grid').append(filterCol.td);
+		$('#row1_grid').append(new buildTwoButtonCol('load filtered jobs', 'add filter')); //TODO move col around instead of recreating it
+	};
+
+
+
+	//GLOBAL FUNCTIONS
+
+	function buildFilterCol(index){
+		var col = {} ;
+		col.td = $('<td/>').attr({
+			'id' : 'filterCol_' + index,
+			'valign' : 'top'
+		});
+
+		var filterTable = createFilterTable(index);
+		
+		tr = $('<tr/>').appendTo(filterTable); 
+		td = $('<td/>').attr('align', 'center').appendTo(tr); 
+		var deleteFilterBtn = $('<input/>').attr({
+			'type' : 'button',
+			'id' : 'deleteFilterBtn',
+			'value' : 'delete filter'
+		}).appendTo(td);
+		td = $('<td/>').attr({
+			'align' : 'center',
+			'colspan' : '2'
+		}).appendTo(tr); 
+		var filterScopeBtn = $('<input/>').attr({
+			'type' : 'button',
+			'id' : 'filterScopeBtn',
+			'value' : 'load filter scope'
+		}).appendTo(td);
+    	
+    	tr = $('<tr/>').appendTo(filterTable); 
+    	td = $('<td/>').attr({
+			'align' : 'center',
+			'colspan' : '3',
+			'id' : 'scopeCol_' + index
+		}).appendTo(tr); 
+
+
+		$(deleteFilterBtn).click(function() {
+    		col.td.remove();
+		});
+
+		$(filterScopeBtn).click(function() {
+    		var scopeView = buildScopeView(index, 0, true, true);
+			$('#scopeCol_' + index).append(scopeView.table);
+		});
+
+		col.td.append(filterTable);
+
+		return col;
+	}
+
+	function buildTwoButtonCol(name1, name2){
+		var col = $('<td/>').attr({
+			'id' : 'twoButtonCol',
+			'valign' : 'top'
+		});
+
+		var buttonTable = $('<table/>').attr({
+			'width' : 'auto',
+			'border': '0'
+		}).appendTo(col);
+		
+		var loadJobsBtn = $('<input/>').attr({
+			'type' : 'button',
+			'id' : 'loadJobsBtn',
+			'value' : name1
+		}).appendTo($('<td/>').appendTo($('<tr/>').appendTo(buttonTable)));
+
+		var self = this;
+
+		$(loadJobsBtn).click(function() {
+    		jobfilterVar.loadJobs();
+		});
+
+		var addFilterColBtn = $('<input/>').attr({
+			'type' : 'button',
+			'id' : 'addFilterColBtn',
+			'value' : name2
+		}).appendTo($('<td/>').appendTo($('<tr/>').appendTo(buttonTable)));
+
+		$(addFilterColBtn).click(function() {
+    		jobfilterVar.addFilterCol();
+		});
+
+		return col;
+	}
+
+	function buildOneScopeViewStage(stage, parent){
+		var tr, td, label, col;
+		var stageFields = scopeTableConfig[stage];
+		for(var rowKey in stageFields){
+			if(stageFields.hasOwnProperty(rowKey)){
+				tr = $('<tr/>').appendTo(parent); 
+				tr.addClass('stage_' + stage + '_row');	
+				for(var i = 0; i < 2; i++){
+					var labelORvalue = i == 0 ? 'label' : 'value';
+					td = $('<td/>').appendTo(tr);
+					label = $('<label/>').appendTo(td); 
+					col = stageFields[rowKey][labelORvalue];
+					for(var attr in col){
+						if(attr == 'text'){
+							label.append(col[attr]);
+						} else {
+							$(label).attr(attr, col[attr]);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	function buildScopeView(index, stageIndex, visible, showStageToggleBtn){
+		var scopeTable = $('<table/>').attr({
+			'id' : 'scopeTable_' + index,
+			'width' : 'auto',
+			'border': '0'
+		});
+		if(!visible){
+			scopeTable.css('display', 'none');
+		}
+
+		tr = $('<tr/>').appendTo(scopeTable); 
+		td = $('<td/>').attr({
+			'colspan' : '2',
+			'align' : 'center'
+		}).appendTo(tr); 
+		$('<label/>').append('scope').appendTo(td);
+
+		var scopeView = {
+			'stage' : stageIndex,
+			'table' : scopeTable
+		};
+
+		var stagesDefined = scopeTableConfig.length;
+		for(var stage = 0; stage <= (stageIndex > stagesDefined ? stagesDefined : stageIndex); stage ++){ //catch if stageIndex > stages defined			
+			buildOneScopeViewStage(stage, scopeTable);
+		}
+
+		if(showStageToggleBtn){
+			var stageExpand = scopeView.stage == 0;
+
+			tr = $('<tr/>').attr('id', 'stageToggleRow_' + index).appendTo(scopeTable); 				
+			td = $('<td/>').css('text-align', 'center').appendTo(tr);
+			var stageChangeBtn = $('<input/>').attr({
+				'type' : 'button',
+				'id' : 'stageChangeBtn_' + index,
+				'value' : stageExpand ? 'v' : '^'
+			}).appendTo(td)
+
+			$(stageChangeBtn).click(function() { 
+				if(stageExpand){ // expand
+					this.value = '^';
+					++ scopeView.stage;
+					buildOneScopeViewStage(scopeView.stage, scopeView.table);
+					$('#stageToggleRow_' + index).detach().appendTo(scopeView.table);
+				} else {		// shrink
+					this.value = 'v';
+					-- scopeView.stage;
+					$('#scopeTable_' + index + ' .stage_1_row').remove();
+				}
+				stageExpand = scopeView.stage == 0;
+			});
+
+			td = $('<td/>').appendTo(tr);
+		}
+		return scopeView;
+	}
+
+	function createFilterTable(index){
+		var filterTable = $('<table/>').attr({
+			'id' : 'filterTable_' + index,
+			'width' : 'auto',
+			'border': '0'
+		});
+		var param, tr, td, col, cell, isLabel;
+
+		tr = $('<tr/>').appendTo(filterTable); 
+		td = $('<td/>').attr({
+			'colspan' : '3',
+			'align' : 'center'
+		}).appendTo(tr); 
+		$('<label/>').append('filter ' + index).appendTo(td);
+
+		for(var key in filterTableConfig){
+			if(filterTableConfig.hasOwnProperty(key)){
+				param = filterTableConfig[key]; 
+
+				tr = $('<tr/>').appendTo(filterTable); 
+				for(var i = 0; i < param.length; i++){
+					col = param[i];
+					td = $('<td/>').appendTo(tr); 
+
+					cell = $('<' + col.tag + '/>').appendTo(td);
+					isLabel = col.tag == 'label';
+
+					if(!isLabel && param.length <= 2){
+						$(td).attr('colspan', '2');
+					}
+					for(var attr in col){
+						if(col.hasOwnProperty(attr) && attr != 'tag'){	
+							if(isLabel && attr == 'text'){
+								cell.append(col[attr]);
+							} else {
+								$(cell).attr(attr, col[attr]);
+							}	
+						}
+					}
+				}
+			}
+		}
+		return filterTable;
+	};
+	
+</script>
+</head>
+
+<body>
+
+	<div id="mainContainer"></div>
+
+</body>
+</html>	
